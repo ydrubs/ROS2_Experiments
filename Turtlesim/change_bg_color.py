@@ -12,6 +12,7 @@ class BackgroundColorChanger(Node):
         # Declare the initial background blue value parameter
         self.declare_parameter('background_b', 0)
         self.blue_value = self.get_parameter('background_b').value
+        self.get_logger().info(f'Initial background_b value: {self.blue_value}')
 
         # Initialize curses for key press detection
         self.stdscr = curses.initscr()
@@ -22,8 +23,10 @@ class BackgroundColorChanger(Node):
         self.run()
 
     def run(self):
+        self.get_logger().info('Press "+" to increase blue or "q" to quit.')
         while True:
             key = self.stdscr.getch()
+            self.get_logger().info(f'Key pressed: {key}')
 
             if key == ord('+'):
                 # Increment blue value by 5
@@ -32,6 +35,7 @@ class BackgroundColorChanger(Node):
                 self.get_logger().info(f'Blue value set to: {self.blue_value}')
 
             if key == ord('q'):  # Press 'q' to quit
+                self.get_logger().info('Exiting...')
                 break
 
     def set_background_color(self):
@@ -39,6 +43,7 @@ class BackgroundColorChanger(Node):
         self.set_parameters([
             rclpy.parameter.Parameter('background_b', rclpy.Parameter.Type.INTEGER, self.blue_value)
         ])
+        self.get_logger().info(f'Set parameter background_b to {self.blue_value}')
 
 
 def main(args=None):
