@@ -45,7 +45,15 @@ class BackgroundColorChanger(Node):
         ])
         self.get_logger().info(f'Set parameter background_b to {self.blue_value}')
 
-
+        # Call the clear service to refresh the background
+        client = self.create_client(Empty, '/clear')
+        if client.wait_for_service(timeout_sec=1.0):
+            request = Empty.Request()
+            future = client.call_async(request)
+            rclpy.spin_until_future_complete(self, future)
+            self.get_logger().info('Background cleared and updated.')
+        else:
+            self.get_logger().error('Clear service not available!')
 def main(args=None):
     rclpy.init(args=args)
     node = BackgroundColorChanger()
