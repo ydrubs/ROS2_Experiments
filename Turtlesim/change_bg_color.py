@@ -10,10 +10,17 @@ class BackgroundColorChanger(Node):
     def __init__(self):
         super().__init__('background_color_changer')
 
-        # Declare the initial background blue value parameter
+        # Declare all background color parameters
+        self.declare_parameter('background_r', 0)
+        self.declare_parameter('background_g', 0)
         self.declare_parameter('background_b', 0)
+
         self.blue_value = self.get_parameter('background_b').value
-        self.get_logger().info(f'Initial background_b value: {self.blue_value}')
+        self.red_value = self.get_parameter('background_r').value
+        self.green_value = self.get_parameter('background_g').value
+
+        self.get_logger().info(
+            f'Initial background colors: R={self.red_value}, G={self.green_value}, B={self.blue_value}')
 
         # Initialize curses for key press detection
         self.stdscr = curses.initscr()
@@ -45,11 +52,13 @@ class BackgroundColorChanger(Node):
                 break
 
     def set_background_color(self):
-        # Update the 'background_b' parameter
+        # Update all background parameters
         self.set_parameters([
-            rclpy.parameter.Parameter('background_b', rclpy.Parameter.Type.INTEGER, self.blue_value)
+            rclpy.parameter.Parameter('background_r', rclpy.Parameter.Type.INTEGER, self.red_value),
+            rclpy.parameter.Parameter('background_g', rclpy.Parameter.Type.INTEGER, self.green_value),
+            rclpy.parameter.Parameter('background_b', rclpy.Parameter.Type.INTEGER, self.blue_value),
         ])
-        self.get_logger().info(f'Set parameter background_b to {self.blue_value}')
+        self.get_logger().info(f'Set parameters: R={self.red_value}, G={self.green_value}, B={self.blue_value}')
 
         # Call the /clear service to apply the changes
         self.call_clear_service()
