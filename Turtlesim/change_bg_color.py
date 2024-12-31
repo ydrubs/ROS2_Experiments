@@ -3,6 +3,7 @@
 import rclpy
 from rclpy.node import Node
 import curses
+from std_srvs.srv import Empty
 
 
 class BackgroundColorChanger(Node):
@@ -19,6 +20,11 @@ class BackgroundColorChanger(Node):
         curses.cbreak()
         self.stdscr.keypad(1)
         curses.noecho()
+
+        # Prepare the clear service client
+        self.clear_client = self.create_client(Empty, '/clear')
+        while not self.clear_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Waiting for /clear service...')
 
         self.run()
 
@@ -45,15 +51,19 @@ class BackgroundColorChanger(Node):
         ])
         self.get_logger().info(f'Set parameter background_b to {self.blue_value}')
 
-        # Call the clear service to refresh the background
-        client = self.create_client(Empty, '/clear')
-        if client.wait_for_service(timeout_sec=1.0):
-            request = Empty.Request()
-            future = client.call_async(request)
-            rclpy.spin_until_future_complete(self, future)
-            self.get_logger().info('Background cleared and updated.')
+        # Call the /clear service to apply the changes
+        self.call_clear_service()
+
+    def call_clear_service(self):
+        request = Empty.Request()
+        future = self.clear_client.call_async(request)
+        rclpy.spin_until_future_complete(self, future)
+        if future.result() is not None:
+            self.get_logger().info('Background refreshed.')
         else:
-            self.get_logger().error('Clear service not available!')
+            self.get_logger().error('Failed to call /clear service.')
+
+
 def main(args=None):
     rclpy.init(args=args)
     node = BackgroundColorChanger()
