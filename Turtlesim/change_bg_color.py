@@ -1,18 +1,17 @@
+#!/usr/bin/env python3
+
 import rclpy
 from rclpy.node import Node
-from std_srvs.srv import Empty
 import curses
 
-
+#start here
 class BackgroundColorChanger(Node):
     def __init__(self):
         super().__init__('background_color_changer')
 
-        # Initialize the background blue value
-        self.blue_value = 0
-
-        # Set up the parameter
-        self.set_parameter(rclpy.parameter.Parameter('background_b', rclpy.Parameter.Type.INTEGER, self.blue_value))
+        # Declare the initial background blue value parameter
+        self.declare_parameter('background_b', 0)
+        self.blue_value = self.get_parameter('background_b').value
 
         # Initialize curses for key press detection
         self.stdscr = curses.initscr()
@@ -36,9 +35,10 @@ class BackgroundColorChanger(Node):
                 break
 
     def set_background_color(self):
-        # Set the new blue value on the turtlesim background
-        self.get_parameter('background_b').value = self.blue_value
-        self.get_node_parameters_interface().set_parameters([self.get_parameter('background_b')])
+        # Update the 'background_b' parameter
+        self.set_parameters([
+            rclpy.parameter.Parameter('background_b', rclpy.Parameter.Type.INTEGER, self.blue_value)
+        ])
 
 
 def main(args=None):
