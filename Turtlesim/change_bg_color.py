@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
-from rclpy.parameter import Parameter
 from std_srvs.srv import Empty
+from turtlesim.srv import SetPen
 import curses
 
 
@@ -9,19 +9,20 @@ class BackgroundColorChanger(Node):
     def __init__(self):
         super().__init__('background_color_changer')
 
-        # Declare parameters
+        # Declare parameters (optional, if you want to store the background colors)
         self.declare_parameter('background_r', 0)
         self.declare_parameter('background_g', 0)
         self.declare_parameter('background_b', 255)
 
-        # Initialize color values
+        # Initialize color values (using parameters)
         self.red_value = self.get_parameter('background_r').value
         self.green_value = self.get_parameter('background_g').value
         self.blue_value = self.get_parameter('background_b').value
 
-        # Create client for the /clear service
-        self.clear_client = self.create_client(Empty, '/clear')
+        # Create client for the /set_background_color service (direct color change)
+        self.set_background_client = self.create_client(SetPen, '/turtle1/set_pen')
 
+        # Create a timer to handle key presses
         self.get_logger().info('BackgroundColorChanger node started. Press "+" to increment blue value.')
 
         # Start a background thread for key press detection using curses
@@ -45,28 +46,27 @@ class BackgroundColorChanger(Node):
 
     def set_background_color(self):
         self.get_logger().info(
-            f'Attempting to set parameters: R={self.red_value}, G={self.green_value}, B={self.blue_value}')
+            f'Updating background color to: R={self.red_value}, G={self.green_value}, B={self.blue_value}')
+
+        # Call the set_background_color service
         try:
-            self.set_parameters([
-                Parameter('background_r', Parameter.Type.INTEGER, self.red_value),
-                Parameter('background_g', Parameter.Type.INTEGER, self.green_value),
-                Parameter('background_b', Parameter.Type.INTEGER, self.blue_value),
-            ])
-            # Log the updated parameter value
-            self.get_logger().info(f'Updated background_b to {self.get_parameter("background_b").value}')
-            self.call_clear_service()
+            # Change the pen color and update the background color directly
+            if not self.set_background_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().error('Service not available!')
+                return
+
+            request = SetPen.Request()
+            request.r = self.red_value
+            request.g = self.green_value
+            request.b = self.blue_value
+            request.width = 0  # No pen width change (just background color)
+            request.off = False  # Turn on the pen (show the color change)
+
+            self.set_background_client.call_async(request)
+            self.get_logger().info(
+                f'Successfully called set_background_color service with R={self.red_value}, G={self.green_value}, B={self.blue_value}')
         except Exception as e:
-            self.get_logger().error(f'Failed to set parameters: {e}')
-
-    def call_clear_service(self):
-        if not self.clear_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().error('Clear service not available!')
-            return
-
-        self.get_logger().info('Calling /clear service...')
-        request = Empty.Request()
-        self.clear_client.call_async(request)
-        self.get_logger().info('Successfully called /clear service.')
+            self.get_logger().error(f'Failed to call set_background_color service: {e}')
 
     def destroy_node(self):
         # Clean up curses
