@@ -1,8 +1,10 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.parameter import Parameter
-from std_srvs.srv import Empty  # Correct service type for /clear
+from std_srvs.srv import Empty
+import curses
 
+#start here
 class BackgroundColorChanger(Node):
     def __init__(self):
         super().__init__('background_color_changer')
@@ -17,32 +19,41 @@ class BackgroundColorChanger(Node):
         self.green_value = self.get_parameter('background_g').value
         self.blue_value = self.get_parameter('background_b').value
 
-        # Create a timer to check for key presses and update parameters
-        self.timer = self.create_timer(0.1, self.update_color)
-
         # Create client for the /clear service
         self.clear_client = self.create_client(Empty, '/clear')
 
         self.get_logger().info('BackgroundColorChanger node started. Press "+" to increment blue value.')
 
-    def update_color(self):
-        # Placeholder for detecting key press
-        key_pressed = self.simulate_key_press()  # Replace this with actual key press detection
+        # Start a background thread for key press detection using curses
+        self.screen = curses.initscr()
+        curses.noecho()
+        curses.cbreak()
+        self.screen.keypad(True)
 
-        if key_pressed == '+':
-            self.get_logger().info(f'Key "+" pressed. Incrementing blue value from {self.blue_value} to {min(self.blue_value + 5, 255)}')
+        # Create a timer to run the curses loop
+        self.create_timer(0.1, self.handle_key_presses)
+
+    def handle_key_presses(self):
+        # Non-blocking key press detection
+        key = self.screen.getch()
+
+        if key == ord('+'):  # Detect '+' key
+            self.get_logger().info(
+                f'Key "+" pressed. Incrementing blue value from {self.blue_value} to {min(self.blue_value + 5, 255)}')
             self.blue_value = min(self.blue_value + 5, 255)
             self.set_background_color()
 
     def set_background_color(self):
-        self.get_logger().info(f'Attempting to set parameters: R={self.red_value}, G={self.green_value}, B={self.blue_value}')
+        self.get_logger().info(
+            f'Attempting to set parameters: R={self.red_value}, G={self.green_value}, B={self.blue_value}')
         try:
             self.set_parameters([
                 Parameter('background_r', Parameter.Type.INTEGER, self.red_value),
                 Parameter('background_g', Parameter.Type.INTEGER, self.green_value),
                 Parameter('background_b', Parameter.Type.INTEGER, self.blue_value),
             ])
-            self.get_logger().info(f'Successfully set parameters. Current background_b={self.get_parameter("background_b").value}')
+            self.get_logger().info(
+                f'Successfully set parameters. Current background_b={self.get_parameter("background_b").value}')
             self.call_clear_service()
         except Exception as e:
             self.get_logger().error(f'Failed to set parameters: {e}')
@@ -57,15 +68,19 @@ class BackgroundColorChanger(Node):
         self.clear_client.call_async(request)
         self.get_logger().info('Successfully called /clear service.')
 
-    def simulate_key_press(self):
-        # This is a placeholder; replace this with actual key press detection
-        return None
+    def destroy_node(self):
+        # Clean up curses
+        curses.endwin()
+        super().destroy_node()
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = BackgroundColorChanger()
-    rclpy.spin(node)
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
     node.destroy_node()
     rclpy.shutdown()
 
