@@ -1,97 +1,76 @@
-#!/usr/bin/env python3
-
 import rclpy
 from rclpy.node import Node
-import curses
-from std_srvs.srv import Empty
-
+from rclpy.parameter import Parameter
+from turtlesim.srv import Kill, Spawn
 
 class BackgroundColorChanger(Node):
     def __init__(self):
         super().__init__('background_color_changer')
 
-        # Declare all background color parameters
+        # Declare parameters
         self.declare_parameter('background_r', 0)
         self.declare_parameter('background_g', 0)
-        self.declare_parameter('background_b', 0)
+        self.declare_parameter('background_b', 255)
 
-        self.blue_value = self.get_parameter('background_b').value
+        # Initialize color values
         self.red_value = self.get_parameter('background_r').value
         self.green_value = self.get_parameter('background_g').value
+        self.blue_value = self.get_parameter('background_b').value
 
-        self.get_logger().info(
-            f'Initial background colors: R={self.red_value}, G={self.green_value}, B={self.blue_value}')
+        # Timer to update the color
+        self.timer = self.create_timer(0.1, self.update_color)
 
-        # Initialize curses for key press detection
-        self.stdscr = curses.initscr()
-        curses.cbreak()
-        self.stdscr.keypad(1)
-        curses.noecho()
+        # Service to clear turtlesim
+        self.clear_client = self.create_client(Kill, '/clear')
 
-        # Prepare the clear service client
-        self.clear_client = self.create_client(Empty, '/clear')
-        while not self.clear_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Waiting for /clear service...')
+        self.get_logger().info('BackgroundColorChanger node started. Press "+" to increment blue value.')
 
-        self.run()
+    def update_color(self):
+        # Placeholder for key press simulation
+        key_pressed = self.simulate_key_press()  # Replace this with real key press detection
 
-    def run(self):
-        self.get_logger().info('Press "+" to increase blue or "q" to quit.')
-        while True:
-            key = self.stdscr.getch()
-            self.get_logger().info(f'Key pressed: {key}')
-
-            if key == ord('+'):
-                # Increment blue value by 5
-                self.blue_value = min(self.blue_value + 5, 255)
-                self.set_background_color()
-                self.get_logger().info(f'Blue value set to: {self.blue_value}')
-
-            if key == ord('q'):  # Press 'q' to quit
-                self.get_logger().info('Exiting...')
-                break
+        if key_pressed == '+':
+            self.blue_value = min(self.blue_value + 5, 255)
+            self.set_background_color()
 
     def set_background_color(self):
-        # Update all background parameters
-        self.set_parameters([
-            rclpy.parameter.Parameter('background_r', rclpy.Parameter.Type.INTEGER, self.red_value),
-            rclpy.parameter.Parameter('background_g', rclpy.Parameter.Type.INTEGER, self.green_value),
-            rclpy.parameter.Parameter('background_b', rclpy.Parameter.Type.INTEGER, self.blue_value),
-        ])
+        try:
+            # Update all background parameters
+            self.set_parameters([
+                Parameter('background_r', Parameter.Type.INTEGER, self.red_value),
+                Parameter('background_g', Parameter.Type.INTEGER, self.green_value),
+                Parameter('background_b', Parameter.Type.INTEGER, self.blue_value),
+            ])
 
-        # Log parameter values
-        self.get_logger().info(f'Parameters set: R={self.red_value}, G={self.green_value}, B={self.blue_value}')
+            # Log the updated values
+            updated_b = self.get_parameter('background_b').value
+            self.get_logger().info(f'Updated parameter: background_b={updated_b}')
 
-        # Call the /clear service to apply the changes
-        self.call_clear_service()
+            # Call the clear service to refresh the background
+            self.call_clear_service()
+        except Exception as e:
+            self.get_logger().error(f'Failed to set parameter: {e}')
 
     def call_clear_service(self):
-        request = Empty.Request()
-        future = self.clear_client.call_async(request)
-        rclpy.spin_until_future_complete(self, future)
+        if not self.clear_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().error('Clear service not available!')
+            return
 
-        # Handle the result of the service call
-        if future.done():
-            try:
-                response = future.result()
-                self.get_logger().info('Background refreshed successfully.')
-            except Exception as e:
-                self.get_logger().error(f'Failed to call /clear service: {e}')
-        else:
-            self.get_logger().error('The service call to /clear did not complete.')
+        request = Kill.Request()
+        self.clear_client.call_async(request)
+        self.get_logger().info('Called /clear service to refresh the background.')
+
+    def simulate_key_press(self):
+        # This is a placeholder; replace it with actual key press detection
+        return None
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = BackgroundColorChanger()
-
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        curses.endwin()
-        rclpy.shutdown()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
 
 
 if __name__ == '__main__':
