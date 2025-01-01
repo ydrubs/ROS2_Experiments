@@ -58,7 +58,9 @@ class BackgroundColorChanger(Node):
             rclpy.parameter.Parameter('background_g', rclpy.Parameter.Type.INTEGER, self.green_value),
             rclpy.parameter.Parameter('background_b', rclpy.Parameter.Type.INTEGER, self.blue_value),
         ])
-        self.get_logger().info(f'Set parameters: R={self.red_value}, G={self.green_value}, B={self.blue_value}')
+
+        # Log parameter values
+        self.get_logger().info(f'Parameters set: R={self.red_value}, G={self.green_value}, B={self.blue_value}')
 
         # Call the /clear service to apply the changes
         self.call_clear_service()
