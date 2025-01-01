@@ -1,28 +1,37 @@
 import rclpy
 from rclpy.node import Node
-from turtlesim.srv import SetPen
+from rclpy.parameter import Parameter
 
-class TurtleBgColorChanger(Node):
+
+class SetBackgroundColor(Node):
     def __init__(self):
-        super().__init__('turtle_bg_color_changer')
-        self.cli = self.create_client(SetPen, '/turtlesim/set_pen')
-        while not self.cli.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
-        self.req = SetPen.Request()
+        super().__init__('set_background_color')
 
-    def send_request(self, r, g, b):
-        self.req.r = r
-        self.req.g = g
-        self.req.b = b
-        self.req.width = 0  # Set width to 0 to only change the background color
-        self.future = self.cli.call_async(self.req)
+        # Declare the parameters under the /turtlesim namespace
+        self.declare_parameter('/turtlesim/background_r', 0)
+        self.declare_parameter('/turtlesim/background_g', 0)
+        self.declare_parameter('/turtlesim/background_b', 100)  # Set the blue value to 100
+
+        # Set the parameters to change the background color
+        self.set_parameter(Parameter('/turtlesim/background_r', Parameter.Type.INTEGER, 0))
+        self.set_parameter(Parameter('/turtlesim/background_g', Parameter.Type.INTEGER, 0))
+        self.set_parameter(Parameter('/turtlesim/background_b', Parameter.Type.INTEGER, 100))
+
+        # Retrieve and log the updated parameter values
+        background_r = self.get_parameter('/turtlesim/background_r').value
+        background_g = self.get_parameter('/turtlesim/background_g').value
+        background_b = self.get_parameter('/turtlesim/background_b').value
+
+        self.get_logger().info(f'Background color set to (R: {background_r}, G: {background_g}, B: {background_b})')
+
 
 def main(args=None):
     rclpy.init(args=args)
-    color_changer = TurtleBgColorChanger()
-    color_changer.send_request(255, 0, 0)  # Change background to red
-    rclpy.spin_until_future_complete(color_changer, color_changer.future)
+    node = SetBackgroundColor()
+    rclpy.spin_once(node)  # Run node briefly to apply the parameter change
+    node.destroy_node()
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
