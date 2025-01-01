@@ -67,10 +67,16 @@ class BackgroundColorChanger(Node):
         request = Empty.Request()
         future = self.clear_client.call_async(request)
         rclpy.spin_until_future_complete(self, future)
-        if future.result() is not None:
-            self.get_logger().info('Background refreshed.')
+
+        # Handle the result of the service call
+        if future.done():
+            try:
+                response = future.result()
+                self.get_logger().info('Background refreshed successfully.')
+            except Exception as e:
+                self.get_logger().error(f'Failed to call /clear service: {e}')
         else:
-            self.get_logger().error('Failed to call /clear service.')
+            self.get_logger().error('The service call to /clear did not complete.')
 
 
 def main(args=None):
