@@ -4,7 +4,7 @@ from rclpy.parameter import Parameter
 from std_srvs.srv import Empty
 import curses
 
-#start here
+
 class BackgroundColorChanger(Node):
     def __init__(self):
         super().__init__('background_color_changer')
@@ -52,8 +52,8 @@ class BackgroundColorChanger(Node):
                 Parameter('background_g', Parameter.Type.INTEGER, self.green_value),
                 Parameter('background_b', Parameter.Type.INTEGER, self.blue_value),
             ])
-            self.get_logger().info(
-                f'Successfully set parameters. Current background_b={self.get_parameter("background_b").value}')
+            # Log the updated parameter value
+            self.get_logger().info(f'Updated background_b to {self.get_parameter("background_b").value}')
             self.call_clear_service()
         except Exception as e:
             self.get_logger().error(f'Failed to set parameters: {e}')
