@@ -1,38 +1,46 @@
 import rclpy
 from rclpy.node import Node
-from rclpy.parameter import Parameter
 from std_srvs.srv import Empty
 
 
-class SetTurtlesimBackground(Node):
+class UpdateTurtlesimBackground(Node):
     def __init__(self):
-        super().__init__('set_turtlesim_background')
+        super().__init__('update_turtlesim_background')
 
-        # Set background color parameters for turtlesim node
-        self.declare_parameter('/turtlesim/background_r', 0)
-        self.declare_parameter('/turtlesim/background_g', 0)
-        self.declare_parameter('/turtlesim/background_b', 100)
+        # Create a parameter client for the turtlesim node
+        self.parameter_client = self.create_client(rclpy.parameter.Parameter, '/turtlesim')
 
-        self.set_parameter(Parameter('/turtlesim/background_r', Parameter.Type.INTEGER, 0))
-        self.set_parameter(Parameter('/turtlesim/background_g', Parameter.Type.INTEGER, 0))
-        self.set_parameter(Parameter('/turtlesim/background_b', Parameter.Type.INTEGER, 100))
+        # Create a service client to call the /clear service
+        self.clear_client = self.create_client(Empty, '/clear')
 
-        # Call the /clear service to apply changes
-        self.clear_service = self.create_client(Empty, '/clear')
-        while not self.clear_service.wait_for_service(timeout_sec=1.0):
+        # Wait for the turtlesim services to become available
+        self.wait_for_services()
+
+        # Update the background color parameters
+        self.update_background_color(0, 0, 100)
+
+        # Call the /clear service to apply the changes
+        self.call_clear_service()
+
+    def wait_for_services(self):
+        self.get_logger().info('Waiting for turtlesim services...')
+        while not self.parameter_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Waiting for parameter service...')
+        while not self.clear_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Waiting for /clear service...')
+        self.get_logger().info('All services are available!')
 
-        self.send_clear_request()
+    def update_background_color(self, r, g, b):
+        self.get_logger().info(f'Setting background color to (R: {r}, G: {g}, B: {b})')
 
-    def send_clear_request(self):
-        request = Empty.Request()
-        self.clear_service.call_async(request)
-        self.get_logger().info('Background cleared and updated!')
+        # Use ros2 parameter command interface to update turtlesim's parameters
+        self.declare_parameter('/turtlesim/background_r', 0)
+        self.get_service().send_set():
 
 
 def main(args=None):
     rclpy.init(args=args)
-    node = SetTurtlesimBackground()
+    node = UpdateTurtlesimBackground()
     rclpy.spin_once(node)
     node.destroy_node()
     rclpy.shutdown()
