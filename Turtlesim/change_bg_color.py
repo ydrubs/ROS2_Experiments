@@ -1,34 +1,39 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.parameter import Parameter
+from std_srvs.srv import Empty
 
 
-class SetBackgroundColor(Node):
+class SetTurtlesimBackground(Node):
     def __init__(self):
-        super().__init__('set_background_color')
+        super().__init__('set_turtlesim_background')
 
-        # Declare the parameters under the /turtlesim namespace
+        # Set background color parameters for turtlesim node
         self.declare_parameter('/turtlesim/background_r', 0)
         self.declare_parameter('/turtlesim/background_g', 0)
-        self.declare_parameter('/turtlesim/background_b', 100)  # Set the blue value to 100
+        self.declare_parameter('/turtlesim/background_b', 100)
 
-        # Set the parameters to change the background color
         self.set_parameter(Parameter('/turtlesim/background_r', Parameter.Type.INTEGER, 0))
         self.set_parameter(Parameter('/turtlesim/background_g', Parameter.Type.INTEGER, 0))
         self.set_parameter(Parameter('/turtlesim/background_b', Parameter.Type.INTEGER, 100))
 
-        # Retrieve and log the updated parameter values
-        background_r = self.get_parameter('/turtlesim/background_r').value
-        background_g = self.get_parameter('/turtlesim/background_g').value
-        background_b = self.get_parameter('/turtlesim/background_b').value
+        # Call the /clear service to apply changes
+        self.clear_service = self.create_client(Empty, '/clear')
+        while not self.clear_service.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Waiting for /clear service...')
 
-        self.get_logger().info(f'Background color set to (R: {background_r}, G: {background_g}, B: {background_b})')
+        self.send_clear_request()
+
+    def send_clear_request(self):
+        request = Empty.Request()
+        self.clear_service.call_async(request)
+        self.get_logger().info('Background cleared and updated!')
 
 
 def main(args=None):
     rclpy.init(args=args)
-    node = SetBackgroundColor()
-    rclpy.spin_once(node)  # Run node briefly to apply the parameter change
+    node = SetTurtlesimBackground()
+    rclpy.spin_once(node)
     node.destroy_node()
     rclpy.shutdown()
 
